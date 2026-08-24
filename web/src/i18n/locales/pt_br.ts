@@ -73,9 +73,10 @@ const pt_br = {
         autoWarning:
           'A calibração pode falhar se o aplicativo do usuário tiver um fundo totalmente preto.',
         manual: 'Manual',
+        selectedResolution: 'Resolução da área selecionada',
+        unused: 'Não utilizado',
         originalResolution: 'Resolução original',
         selectResolution: 'Selecionar resolução original',
-        useSelectedArea: 'Usar a resolução da área selecionada',
         addResolution: 'Adicionar resolução personalizada',
         add: 'Adicionar',
         duplicateResolution: 'Esta resolução já existe.',

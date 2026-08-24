@@ -73,9 +73,10 @@ const id = {
         autoWarning:
           'Kalibrasi mungkin gagal jika aplikasi pengguna menggunakan latar belakang hitam pekat.',
         manual: 'Manual',
+        selectedResolution: 'Resolusi Area Terpilih',
+        unused: 'Tidak digunakan',
         originalResolution: 'Resolusi Asli',
         selectResolution: 'Pilih resolusi asli',
-        useSelectedArea: 'Gunakan resolusi area yang dipilih',
         addResolution: 'Tambahkan resolusi khusus',
         add: 'Tambah',
         duplicateResolution: 'Resolusi ini sudah ada.',

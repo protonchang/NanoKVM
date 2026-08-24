@@ -73,9 +73,10 @@ const vi = {
         autoWarning:
           'Hiệu chỉnh có thể thất bại khi ứng dụng của người dùng có nền hoàn toàn màu đen.',
         manual: 'Thủ công',
+        selectedResolution: 'Độ phân giải vùng đã chọn',
+        unused: 'Không sử dụng',
         originalResolution: 'Độ phân giải gốc',
         selectResolution: 'Chọn độ phân giải gốc',
-        useSelectedArea: 'Sử dụng độ phân giải của vùng đã chọn',
         addResolution: 'Thêm độ phân giải tùy chỉnh',
         add: 'Thêm',
         duplicateResolution: 'Độ phân giải này đã tồn tại.',

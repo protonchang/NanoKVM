@@ -73,9 +73,10 @@ const ja = {
         autoWarning:
           'ユーザーアプリケーションの背景が完全な黒の場合、補正に失敗することがあります。',
         manual: '手動',
+        selectedResolution: '選択領域の解像度',
+        unused: '未使用',
         originalResolution: '元の解像度',
         selectResolution: '元の解像度を選択',
-        useSelectedArea: '選択領域の解像度を使用',
         addResolution: 'カスタム解像度を追加',
         add: '追加',
         duplicateResolution: 'この解像度はすでに存在します。',

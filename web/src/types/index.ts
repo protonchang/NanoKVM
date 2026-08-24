@@ -20,4 +20,6 @@ export type ControlRegionConfig = Partial<InputRegion> & {
   mode: ControlRegionMode;
   resolutions?: OriginalResolution[];
   selectedResolution?: string;
+  regions?: InputRegion[];
+  selectedRegion?: string;
 };

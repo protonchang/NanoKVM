@@ -74,9 +74,10 @@ const es = {
         autoWarning:
           'La calibración puede fallar si la aplicación del usuario tiene un fondo completamente negro.',
         manual: 'Manual',
+        selectedResolution: 'Resolución del área seleccionada',
+        unused: 'Sin usar',
         originalResolution: 'Resolución original',
         selectResolution: 'Seleccionar resolución original',
-        useSelectedArea: 'Usar la resolución del área seleccionada',
         addResolution: 'Añadir resolución personalizada',
         add: 'Añadir',
         duplicateResolution: 'Esta resolución ya existe.',

@@ -12,12 +12,13 @@ import {
   Tooltip,
   Typography
 } from 'antd';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useAtom, useSetAtom } from 'jotai';
 import { ScanSearchIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import {
   getInputRegion,
+  setManualRegions as saveManualRegions,
   setControlRegionMode,
   setOriginalResolutionConfig,
   setSelectedOriginalResolution
@@ -34,6 +35,8 @@ import {
   inputRegionAtom,
   inputRegionSelectingAtom,
   manualInputRegionAtom,
+  manualRegionsAtom,
+  selectedManualRegionAtom,
   selectedOriginalResolutionAtom
 } from '@/jotai/screen.ts';
 import { menuCloseSignalAtom } from '@/jotai/settings.ts';
@@ -44,9 +47,12 @@ const resolutionKey = ({ width, height }: ResolutionPreset) => `${width}x${heigh
 export const OriginalResolution = () => {
   const { t } = useTranslation();
   const setInputRegion = useSetAtom(inputRegionAtom);
-  const manualInputRegion = useAtomValue(manualInputRegionAtom);
   const setManualInputRegion = useSetAtom(manualInputRegionAtom);
-  const [selectedResolution, setSelectedResolution] = useAtom(selectedOriginalResolutionAtom);
+  const [manualRegions, setManualRegions] = useAtom(manualRegionsAtom);
+  const [selectedManualRegion, setSelectedManualRegion] = useAtom(selectedManualRegionAtom);
+  const [selectedOriginalResolution, setSelectedOriginalResolutionState] = useAtom(
+    selectedOriginalResolutionAtom
+  );
   const [mode, setMode] = useAtom(controlRegionModeAtom);
   const setSelecting = useSetAtom(inputRegionSelectingAtom);
   const setKeyboardLock = useSetAtom(keyboardLockAtom);
@@ -74,7 +80,9 @@ export const OriginalResolution = () => {
     if (rsp.code === 0) {
       const config = rsp.data as ControlRegionConfig;
       setResolutions(config?.resolutions || []);
-      setSelectedResolution(config?.selectedResolution || '');
+      setManualRegions(config?.regions || []);
+      setSelectedManualRegion(config?.selectedRegion || '');
+      setSelectedOriginalResolutionState(config?.selectedResolution || '');
       setManualInputRegion(
         isValidInputRegion(config as InputRegion) ? (config as InputRegion) : null
       );
@@ -82,18 +90,41 @@ export const OriginalResolution = () => {
     return rsp;
   }
 
-  async function applyResolution(key: string) {
+  async function applyOriginalResolution(key: string) {
     const rsp = await setSelectedOriginalResolution(key);
     if (rsp.code !== 0) {
       messageApi.error(t('screen.controlRegion.saveFailed'));
       return;
     }
-    setSelectedResolution(key);
+    setSelectedOriginalResolutionState(key);
+    setSelectedManualRegion('');
+    if (!key) setInputRegion(null);
     setIsPopoverOpen(true);
   }
 
-  async function saveResolutions(next: ResolutionPreset[], nextSelected = selectedResolution) {
-    const rsp = await setOriginalResolutionConfig(next, nextSelected);
+  async function applyManualRegion(key: string) {
+    const rsp = await saveManualRegions(manualRegions, key);
+    if (rsp.code !== 0) {
+      messageApi.error(t('screen.controlRegion.saveFailed'));
+      return;
+    }
+    setSelectedManualRegion(key);
+    setSelectedOriginalResolutionState('');
+    setInputRegion(
+      manualRegions.find((region) => `${region.width}x${region.height}` === key) || null
+    );
+    setIsPopoverOpen(true);
+  }
+
+  async function saveResolutions(
+    next: ResolutionPreset[],
+    nextSelected = selectedOriginalResolution
+  ) {
+    const rsp = await setOriginalResolutionConfig(
+      next,
+      nextSelected,
+      nextSelected ? '' : selectedManualRegion
+    );
     if (rsp.code !== 0) {
       messageApi.error(t('screen.controlRegion.saveFailed'));
       return false;
@@ -122,7 +153,7 @@ export const OriginalResolution = () => {
   async function deleteResolution(index: number) {
     if (index < 0 || index >= resolutions.length) return;
     const deleted = resolutionKey(resolutions[index]);
-    const nextSelected = selectedResolution === deleted ? '' : selectedResolution;
+    const nextSelected = selectedOriginalResolution === deleted ? '' : selectedOriginalResolution;
     if (
       await saveResolutions(
         resolutions.filter((_, itemIndex) => itemIndex !== index),
@@ -130,9 +161,26 @@ export const OriginalResolution = () => {
       )
     ) {
       if (!nextSelected) {
-        setSelectedResolution('');
-        setInputRegion(manualInputRegion);
+        setSelectedOriginalResolutionState('');
+        setInputRegion(null);
       }
+    }
+  }
+
+  async function deleteManualRegion(index: number) {
+    if (index < 0 || index >= manualRegions.length) return;
+    const deleted = `${manualRegions[index].width}x${manualRegions[index].height}`;
+    const nextSelected = selectedManualRegion === deleted ? '' : selectedManualRegion;
+    const next = manualRegions.filter((_, itemIndex) => itemIndex !== index);
+    const rsp = await saveManualRegions(next, nextSelected, selectedOriginalResolution);
+    if (rsp.code !== 0) {
+      messageApi.error(t('screen.controlRegion.saveFailed'));
+      return;
+    }
+    setManualRegions(next);
+    if (!nextSelected) {
+      setSelectedManualRegion('');
+      setInputRegion(null);
     }
   }
 
@@ -148,9 +196,14 @@ export const OriginalResolution = () => {
       const manualRegion = isValidInputRegion(config.data as InputRegion)
         ? (config.data as InputRegion)
         : null;
+      const selectedRegion = (config.data as ControlRegionConfig)?.selectedRegion || '';
+      const selectedResolution = (config.data as ControlRegionConfig)?.selectedResolution || '';
+      const regions = (config.data as ControlRegionConfig)?.regions || [];
       setManualInputRegion(manualRegion);
       setInputRegion(
-        (config.data as ControlRegionConfig)?.selectedResolution ? null : manualRegion
+        selectedResolution
+          ? null
+          : regions.find((region) => `${region.width}x${region.height}` === selectedRegion) || null
       );
     } else {
       setInputRegion(null);
@@ -195,19 +248,58 @@ export const OriginalResolution = () => {
             <Button block type="primary" icon={<ScanSearchIcon size={14} />} onClick={selectArea}>
               {t('screen.controlRegion.select')}
             </Button>
+            <Typography.Text>{t('screen.controlRegion.selectedResolution')}</Typography.Text>
+            <Select
+              className="w-full"
+              value={selectedManualRegion}
+              options={[
+                { label: t('screen.controlRegion.unused'), value: '' },
+                ...manualRegions.map((region) => ({
+                  label: `${region.width}x${region.height}`,
+                  value: `${region.width}x${region.height}`
+                }))
+              ]}
+              optionRender={(option) => (
+                <div className="flex items-center justify-between">
+                  <span>{option.label}</span>
+                  {option.value !== '' && (
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        deleteManualRegion(
+                          manualRegions.findIndex(
+                            (region) => `${region.width}x${region.height}` === option.value
+                          )
+                        );
+                      }}
+                    />
+                  )}
+                </div>
+              )}
+              onChange={applyManualRegion}
+            />
             <Typography.Text>{t('screen.controlRegion.originalResolution')}</Typography.Text>
             <Space.Compact block>
               <Select
                 className="w-full"
-                value={selectedResolution}
+                value={selectedOriginalResolution}
                 placeholder={t('screen.controlRegion.selectResolution')}
                 getPopupContainer={(trigger) => trigger.parentElement || document.body}
-                options={resolutions
-                  .map((resolution) => ({
+                options={[
+                  { label: t('screen.controlRegion.unused'), value: '' },
+                  ...resolutions.map((resolution) => ({
                     label: resolutionKey(resolution),
                     value: resolutionKey(resolution)
                   }))
-                  .concat([{ label: t('screen.controlRegion.useSelectedArea'), value: '' }])}
+                ]}
                 optionRender={(option) => (
                   <div className="flex items-center justify-between">
                     <span>{option.label}</span>
@@ -233,7 +325,7 @@ export const OriginalResolution = () => {
                     )}
                   </div>
                 )}
-                onChange={applyResolution}
+                onChange={applyOriginalResolution}
               />
               <Tooltip title={t('screen.controlRegion.addResolution')}>
                 <Button icon={<PlusOutlined />} onClick={() => setIsAddOpen(true)} />

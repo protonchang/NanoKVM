@@ -4,14 +4,16 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import {
   controlRegionModeAtom,
   inputRegionAtom,
-  inputRegionSelectingAtom
+  inputRegionSelectingAtom,
+  resolutionAtom
 } from '@/jotai/screen.ts';
 
-import { detectFrameContent, getMediaSize, isMediaReady } from './geometry.ts';
+import { detectFrameContent, getMediaSize } from './geometry.ts';
 
 export const AutoRegion = () => {
   const mode = useAtomValue(controlRegionModeAtom);
   const selecting = useAtomValue(inputRegionSelectingAtom);
+  const resolution = useAtomValue(resolutionAtom);
   const setInputRegion = useSetAtom(inputRegionAtom);
 
   useEffect(() => {
@@ -19,18 +21,25 @@ export const AutoRegion = () => {
       return;
     }
 
-    const screen = document.getElementById('screen');
-    if (!screen) return;
-    const target = screen;
     let stopped = false;
+    let target: Element | null = null;
     let candidate = '';
     let confirmations = 0;
 
     const detect = () => {
-      if (stopped || !isMediaReady(target)) return;
-      const mediaSize = getMediaSize(target);
+      if (stopped) return;
+
+      const screen = document.getElementById('screen');
+      if (!screen) return;
+      if (screen !== target) {
+        target = screen;
+        candidate = '';
+        confirmations = 0;
+      }
+
+      const mediaSize = getMediaSize(screen, resolution);
       if (!mediaSize) return;
-      const content = detectFrameContent(target, mediaSize);
+      const content = detectFrameContent(screen, mediaSize);
       const key = [
         mediaSize.width,
         mediaSize.height,
@@ -65,7 +74,7 @@ export const AutoRegion = () => {
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [mode, selecting, setInputRegion]);
+  }, [mode, resolution, selecting, setInputRegion]);
 
   useEffect(() => {
     if (mode !== 'auto') setInputRegion(null);

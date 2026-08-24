@@ -12,6 +12,9 @@ import {
   inputRegionAtom,
   inputRegionSelectingAtom,
   manualInputRegionAtom,
+  manualRegionsAtom,
+  resolutionAtom,
+  selectedManualRegionAtom,
   selectedOriginalResolutionAtom,
   videoScaleAtom
 } from '@/jotai/screen.ts';
@@ -75,6 +78,7 @@ const resizeHandles: Array<{
 ];
 
 const minimumSelectionSize = 4;
+const edgeSnapDistance = 8;
 
 export const InputRegionOverlay = () => {
   const { t } = useTranslation();
@@ -82,6 +86,9 @@ export const InputRegionOverlay = () => {
   const [selecting, setSelecting] = useAtom(inputRegionSelectingAtom);
   const [, setInputRegionState] = useAtom(inputRegionAtom);
   const setManualInputRegion = useSetAtom(manualInputRegionAtom);
+  const [manualRegions, setManualRegions] = useAtom(manualRegionsAtom);
+  const resolution = useAtomValue(resolutionAtom);
+  const setSelectedManualRegion = useSetAtom(selectedManualRegionAtom);
   const setSelectedOriginalResolution = useSetAtom(selectedOriginalResolutionAtom);
   const videoScale = useAtomValue(videoScaleAtom);
   const setVideoScale = useSetAtom(videoScaleAtom);
@@ -151,17 +158,15 @@ export const InputRegionOverlay = () => {
       return;
     }
 
-    const screen = document.getElementById('screen');
-    if (!screen) {
-      setFrameRect(null);
-      setMediaSize(null);
-      frameRectRef.current = null;
-      return;
-    }
-    const target = screen;
-
     function updateFrame() {
-      const nextMediaSize = getMediaSize(target);
+      const target = document.getElementById('screen');
+      if (!target) {
+        setFrameRect(null);
+        setMediaSize(null);
+        frameRectRef.current = null;
+        return;
+      }
+      const nextMediaSize = getMediaSize(target, resolution);
       const bounds = target.getBoundingClientRect();
       if (!nextMediaSize || bounds.width <= 0 || bounds.height <= 0) {
         setFrameRect(null);
@@ -192,31 +197,16 @@ export const InputRegionOverlay = () => {
     }
 
     updateFrame();
-    const resizeObserver = new ResizeObserver(updateFrame);
-    resizeObserver.observe(target);
-    const mutationObserver = new MutationObserver(updateFrame);
-    mutationObserver.observe(target, {
-      attributes: true,
-      attributeFilter: ['data-media-width', 'data-media-height']
-    });
     window.addEventListener('resize', updateFrame);
     window.addEventListener('scroll', updateFrame, true);
-    target.addEventListener('load', updateFrame);
-    target.addEventListener('loadedmetadata', updateFrame);
-    target.addEventListener('canplay', updateFrame);
-    target.addEventListener('resize', updateFrame);
+    const timer = window.setInterval(updateFrame, 250);
 
     return () => {
-      resizeObserver.disconnect();
-      mutationObserver.disconnect();
       window.removeEventListener('resize', updateFrame);
       window.removeEventListener('scroll', updateFrame, true);
-      target.removeEventListener('load', updateFrame);
-      target.removeEventListener('loadedmetadata', updateFrame);
-      target.removeEventListener('canplay', updateFrame);
-      target.removeEventListener('resize', updateFrame);
+      window.clearInterval(timer);
     };
-  }, [selecting, videoScale]);
+  }, [resolution, selecting, videoScale]);
 
   useEffect(() => {
     if (!selecting) {
@@ -345,10 +335,18 @@ export const InputRegionOverlay = () => {
       return null;
     }
 
+    const right = frameRect.left + frameRect.width;
+    const bottom = frameRect.top + frameRect.height;
     return {
-      x: Math.max(frameRect.left, Math.min(frameRect.left + frameRect.width, x)),
-      y: Math.max(frameRect.top, Math.min(frameRect.top + frameRect.height, y))
+      x: snapToEdge(Math.max(frameRect.left, Math.min(right, x)), frameRect.left, right),
+      y: snapToEdge(Math.max(frameRect.top, Math.min(bottom, y)), frameRect.top, bottom)
     };
+  }
+
+  function snapToEdge(value: number, start: number, end: number) {
+    if (Math.abs(value - start) <= edgeSnapDistance) return start;
+    if (Math.abs(value - end) <= edgeSnapDistance) return end;
+    return value;
   }
 
   function updateSelection(x: number, y: number) {
@@ -448,17 +446,19 @@ export const InputRegionOverlay = () => {
     setCursorPoint(point);
   }
 
-  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
-    if (
-      !frameRect ||
-      event.clientX < frameRect.left ||
-      event.clientX > frameRect.left + frameRect.width ||
-      event.clientY < frameRect.top ||
-      event.clientY > frameRect.top + frameRect.height
-    ) {
+  function updateHoverCursorPoint(x: number, y: number) {
+    if (!frameRect || selection) {
+      updateCursorPoint(x, y);
       return;
     }
 
+    const point = clampPoint(x, y);
+    if (point) {
+      updateCursorPoint(point.x, point.y, true);
+    }
+  }
+
+  function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     const point = clampPoint(event.clientX, event.clientY);
     if (!point) {
       return;
@@ -480,11 +480,14 @@ export const InputRegionOverlay = () => {
       setCursorPoint(null);
     } else if (resizeRef.current) {
       updateResizedSelection(event.clientX, event.clientY);
-    } else {
-      updateCursorPoint(event.clientX, event.clientY, dragging);
-      if (dragging) {
-        updateSelection(event.clientX, event.clientY);
+    } else if (dragging) {
+      const point = clampPoint(event.clientX, event.clientY);
+      if (point) {
+        updateCursorPoint(point.x, point.y, true);
+        updateSelection(point.x, point.y);
       }
+    } else {
+      updateHoverCursorPoint(event.clientX, event.clientY);
     }
     if (moveRef.current) {
       updateMovedSelection(event.clientX, event.clientY);
@@ -575,14 +578,20 @@ export const InputRegionOverlay = () => {
       width: Math.max(1, right - left),
       height: Math.max(1, bottom - top)
     };
+    const key = `${region.width}x${region.height}`;
+    const regions = manualRegions.some((item) => `${item.width}x${item.height}` === key)
+      ? manualRegions.map((item) => (`${item.width}x${item.height}` === key ? region : item))
+      : [...manualRegions, region];
 
-    const rsp = await setInputRegionConfig(region, '');
+    const rsp = await setInputRegionConfig(region, regions, key);
     if (rsp.code !== 0) {
       setError(t('screen.controlRegion.saveFailed'));
       return;
     }
 
     setManualInputRegion(region);
+    setManualRegions(regions);
+    setSelectedManualRegion(key);
     setSelectedOriginalResolution('');
     setInputRegionState(region);
     cursorPointRef.current = null;

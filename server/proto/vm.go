@@ -163,6 +163,17 @@ type InputRegion struct {
 	Height             int                  `json:"height"`
 	Resolutions        []OriginalResolution `json:"resolutions,omitempty"`
 	SelectedResolution string               `json:"selectedResolution"`
+	Regions            []ManualRegion       `json:"regions,omitempty"`
+	SelectedRegion     string               `json:"selectedRegion"`
+}
+
+type ManualRegion struct {
+	FrameWidth  int `json:"frameWidth"`
+	FrameHeight int `json:"frameHeight"`
+	Left        int `json:"left"`
+	Top         int `json:"top"`
+	Width       int `json:"width"`
+	Height      int `json:"height"`
 }
 
 type OriginalResolution struct {
@@ -180,6 +191,8 @@ type SetInputRegionReq struct {
 	Height             *int                  `json:"height,omitempty"`
 	Resolutions        *[]OriginalResolution `json:"resolutions,omitempty"`
 	SelectedResolution *string               `json:"selectedResolution,omitempty"`
+	Regions            *[]ManualRegion       `json:"regions,omitempty"`
+	SelectedRegion     *string               `json:"selectedRegion,omitempty"`
 }
 
 type GetInputRegionRsp struct {

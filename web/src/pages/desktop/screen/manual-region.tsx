@@ -4,7 +4,9 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import {
   controlRegionModeAtom,
   inputRegionAtom,
-  manualInputRegionAtom,
+  manualRegionsAtom,
+  resolutionAtom,
+  selectedManualRegionAtom,
   selectedOriginalResolutionAtom
 } from '@/jotai/screen.ts';
 
@@ -12,52 +14,47 @@ import { getCenteredInputRegionByAspectRatio, getMediaSize } from './geometry.ts
 
 export const ManualRegion = () => {
   const mode = useAtomValue(controlRegionModeAtom);
-  const selected = useAtomValue(selectedOriginalResolutionAtom);
-  const manualRegion = useAtomValue(manualInputRegionAtom);
+  const selectedOriginal = useAtomValue(selectedOriginalResolutionAtom);
+  const selectedManual = useAtomValue(selectedManualRegionAtom);
+  const manualRegions = useAtomValue(manualRegionsAtom);
+  const resolution = useAtomValue(resolutionAtom);
   const setInputRegion = useSetAtom(inputRegionAtom);
 
   useEffect(() => {
     if (mode !== 'manual') return;
-    if (!selected) {
-      setInputRegion(manualRegion);
+    if (selectedManual) {
+      setInputRegion(
+        manualRegions.find((region) => `${region.width}x${region.height}` === selectedManual) ||
+          null
+      );
       return;
     }
 
-    const [width, height] = selected.split('x').map(Number);
-    if (manualRegion?.width === width && manualRegion.height === height) {
-      setInputRegion(manualRegion);
-      return;
-    }
-    const screen = document.getElementById('screen');
-    if (!screen || !width || !height) {
+    if (!selectedOriginal) {
       setInputRegion(null);
       return;
     }
-    const target = screen;
+
+    const [width, height] = selectedOriginal.split('x').map(Number);
+    if (!width || !height) {
+      setInputRegion(null);
+      return;
+    }
+
     const update = () => {
-      const mediaSize = getMediaSize(target);
+      const target = document.getElementById('screen');
+      if (!target) return;
+      const mediaSize = getMediaSize(target, resolution);
       setInputRegion(
         mediaSize ? getCenteredInputRegionByAspectRatio(width, height, mediaSize) : null
       );
     };
     update();
-    const observer = new MutationObserver(update);
-    observer.observe(target, {
-      attributes: true,
-      attributeFilter: ['data-media-width', 'data-media-height']
-    });
-    target.addEventListener('load', update);
-    target.addEventListener('loadedmetadata', update);
-    target.addEventListener('canplay', update);
-    target.addEventListener('resize', update);
+    const timer = window.setInterval(update, 250);
     return () => {
-      observer.disconnect();
-      target.removeEventListener('load', update);
-      target.removeEventListener('loadedmetadata', update);
-      target.removeEventListener('canplay', update);
-      target.removeEventListener('resize', update);
+      window.clearInterval(timer);
     };
-  }, [manualRegion, mode, selected, setInputRegion]);
+  }, [manualRegions, mode, resolution, selectedManual, selectedOriginal, setInputRegion]);
 
   return null;
 };

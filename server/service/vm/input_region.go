@@ -99,7 +99,20 @@ func (s *Service) SetInputRegion(c *gin.Context) {
 		if req.SelectedResolution != nil {
 			region.SelectedResolution = *req.SelectedResolution
 		}
-		if err := validateSelectedResolution(region.SelectedResolution, region.Resolutions); err != nil {
+		if req.Regions != nil {
+			if err := validateManualRegions(*req.Regions); err != nil {
+				rsp.ErrRsp(c, -1, "invalid manual regions")
+				return
+			}
+			region.Regions = *req.Regions
+			if len(region.Regions) == 0 {
+				clearLegacyManualRegion(region)
+			}
+		}
+		if req.SelectedRegion != nil {
+			region.SelectedRegion = *req.SelectedRegion
+		}
+		if err := validateSelections(*region); err != nil {
 			rsp.ErrRsp(c, -1, "invalid selected resolution")
 			return
 		}
@@ -127,6 +140,8 @@ func (s *Service) SetInputRegion(c *gin.Context) {
 	if previous != nil {
 		region.Resolutions = previous.Resolutions
 		region.SelectedResolution = previous.SelectedResolution
+		region.Regions = previous.Regions
+		region.SelectedRegion = previous.SelectedRegion
 	}
 	if req.Resolutions != nil {
 		if err := validateOriginalResolutions(*req.Resolutions); err != nil {
@@ -138,7 +153,20 @@ func (s *Service) SetInputRegion(c *gin.Context) {
 	if req.SelectedResolution != nil {
 		region.SelectedResolution = *req.SelectedResolution
 	}
-	if err := validateSelectedResolution(region.SelectedResolution, region.Resolutions); err != nil {
+	if req.Regions != nil {
+		if err := validateManualRegions(*req.Regions); err != nil {
+			rsp.ErrRsp(c, -1, "invalid manual regions")
+			return
+		}
+		region.Regions = *req.Regions
+		if len(region.Regions) == 0 {
+			clearLegacyManualRegion(&region)
+		}
+	}
+	if req.SelectedRegion != nil {
+		region.SelectedRegion = *req.SelectedRegion
+	}
+	if err := validateSelections(region); err != nil {
 		rsp.ErrRsp(c, -1, "invalid selected resolution")
 		return
 	}
@@ -176,8 +204,66 @@ func validateSelectedResolution(selected string, resolutions []proto.OriginalRes
 	return errors.New("selected resolution not found")
 }
 
+func validateManualRegions(regions []proto.ManualRegion) error {
+	seen := make(map[string]struct{}, len(regions))
+	for _, region := range regions {
+		if err := validateManualRegion(region); err != nil {
+			return err
+		}
+		key := manualRegionKey(region)
+		if _, ok := seen[key]; ok {
+			return errors.New("duplicate manual region")
+		}
+		seen[key] = struct{}{}
+	}
+	return nil
+}
+
+func validateManualRegion(region proto.ManualRegion) error {
+	return validateInputRegion(proto.InputRegion{
+		Mode:        "manual",
+		FrameWidth:  region.FrameWidth,
+		FrameHeight: region.FrameHeight,
+		Left:        region.Left,
+		Top:         region.Top,
+		Width:       region.Width,
+		Height:      region.Height,
+	})
+}
+
+func validateSelections(region proto.InputRegion) error {
+	if region.SelectedResolution != "" && region.SelectedRegion != "" {
+		return errors.New("only one input region source may be selected")
+	}
+	if err := validateSelectedResolution(region.SelectedResolution, region.Resolutions); err != nil {
+		return err
+	}
+	if region.SelectedRegion == "" {
+		return nil
+	}
+	for _, item := range region.Regions {
+		if region.SelectedRegion == manualRegionKey(item) {
+			return nil
+		}
+	}
+	return errors.New("selected manual region not found")
+}
+
 func resolutionKey(resolution proto.OriginalResolution) string {
 	return fmt.Sprintf("%dx%d", resolution.Width, resolution.Height)
+}
+
+func manualRegionKey(region proto.ManualRegion) string {
+	return fmt.Sprintf("%dx%d", region.Width, region.Height)
+}
+
+func clearLegacyManualRegion(region *proto.InputRegion) {
+	region.FrameWidth = 0
+	region.FrameHeight = 0
+	region.Left = 0
+	region.Top = 0
+	region.Width = 0
+	region.Height = 0
 }
 
 func inputRegionFromRequest(req proto.SetInputRegionReq) (proto.InputRegion, error) {
@@ -236,7 +322,27 @@ func readInputRegion(path string) (*proto.InputRegion, error) {
 	if region.Mode == "" {
 		region.Mode = "manual"
 	}
+	if len(region.Regions) == 0 && region.FrameWidth > 0 && region.FrameHeight > 0 {
+		manual := proto.ManualRegion{
+			FrameWidth:  region.FrameWidth,
+			FrameHeight: region.FrameHeight,
+			Left:        region.Left,
+			Top:         region.Top,
+			Width:       region.Width,
+			Height:      region.Height,
+		}
+		region.Regions = []proto.ManualRegion{manual}
+		if region.SelectedResolution == "" {
+			region.SelectedRegion = manualRegionKey(manual)
+		}
+	}
 	if err := validateInputRegion(*region); err != nil {
+		return nil, nil
+	}
+	if err := validateManualRegions(region.Regions); err != nil {
+		return nil, nil
+	}
+	if err := validateSelections(*region); err != nil {
 		return nil, nil
 	}
 	return region, nil

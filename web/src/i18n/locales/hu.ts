@@ -75,9 +75,10 @@ const hu = {
         autoWarning:
           'A kalibrálás sikertelen lehet, ha a felhasználói alkalmazás háttere teljesen fekete.',
         manual: 'Kézi',
+        selectedResolution: 'Kijelölt terület felbontása',
+        unused: 'Nincs használatban',
         originalResolution: 'Eredeti felbontás',
         selectResolution: 'Válassza ki az eredeti felbontást',
-        useSelectedArea: 'A kijelölt terület felbontásának használata',
         addResolution: 'Egyéni felbontás hozzáadása',
         add: 'Hozzáadás',
         duplicateResolution: 'Ez a felbontás már létezik.',

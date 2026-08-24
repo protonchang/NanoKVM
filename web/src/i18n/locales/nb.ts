@@ -74,9 +74,10 @@ const nb = {
         autoWarning:
           'Kalibreringen kan mislykkes hvis brukerprogrammet har en helt svart bakgrunn.',
         manual: 'Manuell',
+        selectedResolution: 'Oppløsning for valgt område',
+        unused: 'Ikke i bruk',
         originalResolution: 'Opprinnelig oppløsning',
         selectResolution: 'Velg opprinnelig oppløsning',
-        useSelectedArea: 'Bruk oppløsningen til det valgte området',
         addResolution: 'Legg til egendefinert oppløsning',
         add: 'Legg til',
         duplicateResolution: 'Denne oppløsningen finnes allerede.',

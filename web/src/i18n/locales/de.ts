@@ -76,9 +76,10 @@ const de = {
         autoWarning:
           'Die Kalibrierung kann fehlschlagen, wenn die Benutzeranwendung einen vollständig schwarzen Hintergrund hat.',
         manual: 'Manuell',
+        selectedResolution: 'Auflösung des ausgewählten Bereichs',
+        unused: 'Nicht verwendet',
         originalResolution: 'Originalauflösung',
         selectResolution: 'Originalauflösung auswählen',
-        useSelectedArea: 'Auflösung des ausgewählten Bereichs verwenden',
         addResolution: 'Benutzerdefinierte Auflösung hinzufügen',
         add: 'Hinzufügen',
         duplicateResolution: 'Diese Auflösung ist bereits vorhanden.',

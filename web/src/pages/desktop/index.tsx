@@ -13,7 +13,9 @@ import {
   controlRegionModeAtom,
   inputRegionAtom,
   manualInputRegionAtom,
+  manualRegionsAtom,
   resolutionAtom,
+  selectedManualRegionAtom,
   selectedOriginalResolutionAtom,
   videoModeAtom
 } from '@/jotai/screen.ts';
@@ -42,14 +44,11 @@ function getVideoMode() {
   const defaultVideoMode = window.RTCPeerConnection ? 'h264' : 'mjpeg';
 
   const cookieVideoMode = storage.getVideoMode();
-  if (cookieVideoMode) {
-    if (cookieVideoMode === 'direct' && !window.VideoDecoder) {
-      return defaultVideoMode;
-    }
-    return cookieVideoMode;
+  if (!cookieVideoMode || (cookieVideoMode === 'direct' && !window.VideoDecoder)) {
+    return defaultVideoMode;
   }
 
-  return defaultVideoMode;
+  return ['direct', 'h264', 'mjpeg'].includes(cookieVideoMode) ? cookieVideoMode : defaultVideoMode;
 }
 
 export const Desktop = () => {
@@ -64,6 +63,8 @@ export const Desktop = () => {
   const [inputRegion, setInputRegion] = useAtom(inputRegionAtom);
   const [controlRegionMode, setControlRegionModeState] = useAtom(controlRegionModeAtom);
   const setManualInputRegion = useSetAtom(manualInputRegionAtom);
+  const setManualRegions = useSetAtom(manualRegionsAtom);
+  const setSelectedManualRegion = useSetAtom(selectedManualRegionAtom);
   const setSelectedOriginalResolution = useSetAtom(selectedOriginalResolutionAtom);
   const isPicoclawChatOpen = useAtomValue(picoclawChatOpenAtom);
 
@@ -76,6 +77,8 @@ export const Desktop = () => {
     setResolution(res);
     setInputRegion(null);
     setManualInputRegion(null);
+    setManualRegions([]);
+    setSelectedManualRegion('');
     setSelectedOriginalResolution('');
     setControlRegionModeState('off');
 
@@ -87,15 +90,24 @@ export const Desktop = () => {
           ? (config as InputRegion)
           : null;
         const selectedResolution = config?.selectedResolution || '';
+        const regions = config?.regions || [];
+        const selectedRegion = config?.selectedRegion || '';
+        const selectedManualRegion = regions.find(
+          (region) => `${region.width}x${region.height}` === selectedRegion
+        );
         setManualInputRegion(manualRegion);
+        setManualRegions(regions);
+        setSelectedManualRegion(selectedRegion);
         setSelectedOriginalResolution(selectedResolution);
-        setInputRegion(mode === 'manual' && !selectedResolution ? manualRegion : null);
+        setInputRegion(mode === 'manual' && selectedRegion ? selectedManualRegion || null : null);
         setControlRegionModeState(mode);
       })
       .catch(() => {
         setControlRegionModeState('off');
         setInputRegion(null);
         setManualInputRegion(null);
+        setManualRegions([]);
+        setSelectedManualRegion('');
         setSelectedOriginalResolution('');
       });
 
@@ -107,7 +119,9 @@ export const Desktop = () => {
     setControlRegionModeState,
     setInputRegion,
     setManualInputRegion,
+    setManualRegions,
     setResolution,
+    setSelectedManualRegion,
     setSelectedOriginalResolution,
     setVideoMode
   ]);
@@ -135,7 +149,7 @@ export const Desktop = () => {
         clearTimeout(validationTimer);
       }
       validationTimer = setTimeout(() => {
-        const mediaSize = getMediaSize(target);
+        const mediaSize = getMediaSize(target, resolution);
         if (!mediaSize || !isMediaReady(target) || isInputRegionCompatible(region, mediaSize)) {
           return;
         }

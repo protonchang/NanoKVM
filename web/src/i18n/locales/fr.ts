@@ -76,9 +76,10 @@ const fr = {
         autoWarning:
           "L'étalonnage peut échouer si l'application utilisateur présente un arrière-plan entièrement noir.",
         manual: 'Manuel',
+        selectedResolution: 'Résolution de la zone sélectionnée',
+        unused: 'Non utilisée',
         originalResolution: "Résolution d'origine",
         selectResolution: "Sélectionner la résolution d'origine",
-        useSelectedArea: 'Utiliser la résolution de la zone sélectionnée',
         addResolution: 'Ajouter une résolution personnalisée',
         add: 'Ajouter',
         duplicateResolution: 'Cette résolution existe déjà.',

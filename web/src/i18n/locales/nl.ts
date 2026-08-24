@@ -75,9 +75,10 @@ const nl = {
         autoWarning:
           'De kalibratie kan mislukken als de gebruikerstoepassing een volledig zwarte achtergrond heeft.',
         manual: 'Handmatig',
+        selectedResolution: 'Resolutie van geselecteerd gebied',
+        unused: 'Niet gebruikt',
         originalResolution: 'Oorspronkelijke resolutie',
         selectResolution: 'Oorspronkelijke resolutie selecteren',
-        useSelectedArea: 'Resolutie van geselecteerd gebied gebruiken',
         addResolution: 'Aangepaste resolutie toevoegen',
         add: 'Toevoegen',
         duplicateResolution: 'Deze resolutie bestaat al.',

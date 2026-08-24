@@ -75,9 +75,10 @@ const it = {
         autoWarning:
           "La calibrazione potrebbe non riuscire se l'applicazione utente ha uno sfondo completamente nero.",
         manual: 'Manuale',
+        selectedResolution: 'Risoluzione area selezionata',
+        unused: 'Non utilizzata',
         originalResolution: 'Risoluzione originale',
         selectResolution: 'Seleziona la risoluzione originale',
-        useSelectedArea: "Usa la risoluzione dell'area selezionata",
         addResolution: 'Aggiungi una risoluzione personalizzata',
         add: 'Aggiungi',
         duplicateResolution: 'Questa risoluzione esiste già.',

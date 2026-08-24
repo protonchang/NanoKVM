@@ -73,9 +73,10 @@ const da = {
         autoWarning:
           'Kalibreringen kan mislykkes, hvis brugerprogrammet har en helt sort baggrund.',
         manual: 'Manuel',
+        selectedResolution: 'Valgt områdeopløsning',
+        unused: 'Ikke i brug',
         originalResolution: 'Oprindelig opløsning',
         selectResolution: 'Vælg oprindelig opløsning',
-        useSelectedArea: 'Brug det valgte områdes opløsning',
         addResolution: 'Tilføj brugerdefineret opløsning',
         add: 'Tilføj',
         duplicateResolution: 'Denne opløsning findes allerede.',

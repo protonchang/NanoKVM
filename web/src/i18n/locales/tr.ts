@@ -74,9 +74,10 @@ const tr = {
         autoWarning:
           'Kullanıcı uygulamasının arka planı tamamen siyah olduğunda kalibrasyon başarısız olabilir.',
         manual: 'Manuel',
+        selectedResolution: 'Seçili Alan Çözünürlüğü',
+        unused: 'Kullanılmıyor',
         originalResolution: 'Orijinal Çözünürlük',
         selectResolution: 'Orijinal çözünürlüğü seçin',
-        useSelectedArea: 'Seçili alanın çözünürlüğünü kullan',
         addResolution: 'Özel çözünürlük ekle',
         add: 'Ekle',
         duplicateResolution: 'Bu çözünürlük zaten mevcut.',

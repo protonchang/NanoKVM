@@ -73,9 +73,10 @@ const ca = {
         autoWarning:
           "El calibratge pot fallar quan l'aplicació de l'usuari tingui un fons completament negre.",
         manual: 'Manual',
+        selectedResolution: "Resolució de l'àrea seleccionada",
+        unused: 'No utilitzada',
         originalResolution: 'Resolució original',
         selectResolution: 'Selecciona la resolució original',
-        useSelectedArea: "Utilitza la resolució de l'àrea seleccionada",
         addResolution: 'Afegeix una resolució personalitzada',
         add: 'Afegeix',
         duplicateResolution: 'Aquesta resolució ja existeix.',

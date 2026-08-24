@@ -74,9 +74,10 @@ const pl = {
         autoWarning:
           'Kalibracja może się nie powieść, gdy aplikacja użytkownika ma całkowicie czarne tło.',
         manual: 'Ręczna',
+        selectedResolution: 'Rozdzielczość zaznaczonego obszaru',
+        unused: 'Nieużywane',
         originalResolution: 'Oryginalna rozdzielczość',
         selectResolution: 'Wybierz oryginalną rozdzielczość',
-        useSelectedArea: 'Użyj rozdzielczości zaznaczonego obszaru',
         addResolution: 'Dodaj niestandardową rozdzielczość',
         add: 'Dodaj',
         duplicateResolution: 'Ta rozdzielczość już istnieje.',

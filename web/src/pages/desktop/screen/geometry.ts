@@ -15,6 +15,10 @@ export type FrameContent = {
 export type RenderedMediaRect = FrameContent;
 
 const aspectRatioTolerance = 0.01;
+const mediaWidthAttribute = 'data-media-width';
+const mediaHeightAttribute = 'data-media-height';
+const blackPixelThreshold = 32;
+const darkSampleRatio = 0.75;
 
 export const fullFrameContent = (mediaSize: MediaSize): FrameContent => ({
   left: 0,
@@ -23,7 +27,13 @@ export const fullFrameContent = (mediaSize: MediaSize): FrameContent => ({
   height: mediaSize.height
 });
 
-export function getMediaSize(screen: Element): MediaSize | null {
+export function getMediaSize(screen: Element, fallback?: MediaSize | null): MediaSize | null {
+  const dataWidth = Number(screen.getAttribute(mediaWidthAttribute));
+  const dataHeight = Number(screen.getAttribute(mediaHeightAttribute));
+  if (dataWidth > 0 && dataHeight > 0) {
+    return { width: dataWidth, height: dataHeight };
+  }
+
   if (screen instanceof HTMLVideoElement && screen.videoWidth > 0 && screen.videoHeight > 0) {
     return { width: screen.videoWidth, height: screen.videoHeight };
   }
@@ -32,28 +42,20 @@ export function getMediaSize(screen: Element): MediaSize | null {
     return { width: screen.naturalWidth, height: screen.naturalHeight };
   }
 
-  if (screen instanceof HTMLCanvasElement) {
-    const width = Number(screen.dataset.mediaWidth);
-    const height = Number(screen.dataset.mediaHeight);
-    if (width > 0 && height > 0) {
-      return { width, height };
-    }
-  }
-
-  return null;
+  return fallback && fallback.width > 0 && fallback.height > 0 ? fallback : null;
 }
 
 export function isMediaReady(screen: Element) {
   if (screen instanceof HTMLVideoElement) {
-    return screen.readyState >= 2 && screen.videoWidth > 0 && screen.videoHeight > 0;
+    return screen.readyState >= 2 && !!getMediaSize(screen);
   }
 
   if (screen instanceof HTMLImageElement) {
-    return screen.complete && screen.naturalWidth > 0 && screen.naturalHeight > 0;
+    return !!getMediaSize(screen);
   }
 
   if (screen instanceof HTMLCanvasElement) {
-    return Number(screen.dataset.mediaWidth) > 0 && Number(screen.dataset.mediaHeight) > 0;
+    return !!getMediaSize(screen);
   }
 
   return false;
@@ -73,20 +75,33 @@ export function detectFrameContent(screen: Element, mediaSize: MediaSize): Frame
 
   try {
     const pixels = context.getImageData(0, 0, width, height).data;
-    const left = findBorderInset(pixels, width, height, true, 'horizontal');
-    const right = findBorderInset(pixels, width, height, false, 'horizontal');
-    const top = findBorderInset(pixels, width, height, true, 'vertical');
-    const bottom = findBorderInset(pixels, width, height, false, 'vertical');
-    const horizontalBorder =
-      left >= Math.max(4, Math.round(width * 0.02)) &&
-      right >= Math.max(4, Math.round(width * 0.02)) &&
-      left + right < width * 0.4 &&
-      Math.abs(left - right) <= Math.max(4, Math.round(width * 0.05));
-    const verticalBorder =
-      top >= Math.max(4, Math.round(height * 0.02)) &&
-      bottom >= Math.max(4, Math.round(height * 0.02)) &&
-      top + bottom < height * 0.4 &&
-      Math.abs(top - bottom) <= Math.max(4, Math.round(height * 0.05));
+    let top = findBorderInset(pixels, width, height, true, 'vertical');
+    let bottom = findBorderInset(pixels, width, height, false, 'vertical');
+    let verticalBorder = isSymmetricBorder(top, bottom, height);
+    const left = findBorderInset(
+      pixels,
+      width,
+      height,
+      true,
+      'horizontal',
+      verticalBorder ? top : 0,
+      verticalBorder ? height - bottom : height
+    );
+    const right = findBorderInset(
+      pixels,
+      width,
+      height,
+      false,
+      'horizontal',
+      verticalBorder ? top : 0,
+      verticalBorder ? height - bottom : height
+    );
+    const horizontalBorder = isSymmetricBorder(left, right, width);
+    if (horizontalBorder) {
+      top = findBorderInset(pixels, width, height, true, 'vertical', left, width - right);
+      bottom = findBorderInset(pixels, width, height, false, 'vertical', left, width - right);
+      verticalBorder = isSymmetricBorder(top, bottom, height);
+    }
     const frameLeft = horizontalBorder ? (left / width) * mediaSize.width : 0;
     const frameRight = horizontalBorder ? (right / width) * mediaSize.width : 0;
     const frameTop = verticalBorder ? (top / height) * mediaSize.height : 0;
@@ -128,26 +143,41 @@ function findBorderInset(
   width: number,
   height: number,
   fromStart: boolean,
-  axis: 'horizontal' | 'vertical'
+  axis: 'horizontal' | 'vertical',
+  sampleStart = 0,
+  sampleEnd = axis === 'horizontal' ? height : width
 ) {
   const scanSize = axis === 'horizontal' ? width : height;
-  const sampleSize = axis === 'horizontal' ? height : width;
-  const lines = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map((ratio) =>
-    Math.round((sampleSize - 1) * ratio)
+  const sampleSize = Math.max(1, sampleEnd - sampleStart);
+  const lines = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].map(
+    (ratio) => sampleStart + Math.round((sampleSize - 1) * ratio)
   );
   const limit = Math.floor(scanSize * 0.45);
   let inset = 0;
   for (let offset = 0; offset < limit; offset++) {
-    const black = lines.every((line) => {
+    const darkSamples = lines.filter((line) => {
       const x = axis === 'horizontal' ? (fromStart ? offset : width - offset - 1) : line;
       const y = axis === 'horizontal' ? line : fromStart ? offset : height - offset - 1;
       const index = (y * width + x) * 4;
-      return pixels[index] === 0 && pixels[index + 1] === 0 && pixels[index + 2] === 0;
-    });
+      return (
+        pixels[index] <= blackPixelThreshold &&
+        pixels[index + 1] <= blackPixelThreshold &&
+        pixels[index + 2] <= blackPixelThreshold
+      );
+    }).length;
+    const black = darkSamples / lines.length >= darkSampleRatio;
     if (!black) break;
     inset = offset + 1;
   }
   return inset;
+}
+
+function isSymmetricBorder(start: number, end: number, size: number) {
+  return (
+    start >= Math.max(4, Math.round(size * 0.02)) &&
+    end >= Math.max(4, Math.round(size * 0.02)) &&
+    Math.abs(start - end) <= Math.max(4, Math.round(size * 0.05))
+  );
 }
 
 export function getRenderedMediaRect(

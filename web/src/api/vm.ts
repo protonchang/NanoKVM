@@ -48,11 +48,17 @@ export function setInputRegion(region: InputRegion) {
   return http.post('/api/vm/input-region', { mode: 'manual', ...region });
 }
 
-export function setInputRegionConfig(region: InputRegion, selectedResolution: string) {
+export function setInputRegionConfig(
+  region: InputRegion,
+  regions: InputRegion[],
+  selectedRegion: string
+) {
   return http.post('/api/vm/input-region', {
     mode: 'manual',
     ...region,
-    selectedResolution
+    regions,
+    selectedRegion,
+    selectedResolution: ''
   });
 }
 
@@ -66,17 +72,36 @@ export function setOriginalResolutions(mode: ControlRegionMode, resolutions: Ori
 
 export function setOriginalResolutionConfig(
   resolutions: OriginalResolution[],
-  selectedResolution: string
+  selectedResolution: string,
+  selectedRegion: string
 ) {
   return http.post('/api/vm/input-region', {
     mode: 'manual',
     resolutions,
-    selectedResolution
+    selectedResolution,
+    selectedRegion
   });
 }
 
 export function setSelectedOriginalResolution(selectedResolution: string) {
-  return http.post('/api/vm/input-region', { mode: 'manual', selectedResolution });
+  return http.post('/api/vm/input-region', {
+    mode: 'manual',
+    selectedResolution,
+    selectedRegion: ''
+  });
+}
+
+export function setManualRegions(
+  regions: InputRegion[],
+  selectedRegion: string,
+  selectedResolution = ''
+) {
+  return http.post('/api/vm/input-region', {
+    mode: 'manual',
+    regions,
+    selectedRegion,
+    selectedResolution
+  });
 }
 
 // get memory limit
